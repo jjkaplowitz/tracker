@@ -40,7 +40,7 @@ svg{max-width:100%;display:block;}
 
 /* ── HUD ── */
 .hud{position:sticky;top:0;z-index:40;background:rgba(0,0,0,.88);-webkit-backdrop-filter:saturate(140%) blur(14px);backdrop-filter:saturate(140%) blur(14px);border-bottom:1px solid var(--line);padding-top:max(8px,env(safe-area-inset-top));}
-.hud-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0 10px;}
+.hud-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));}
 .callsign{display:flex;align-items:center;gap:8px;cursor:pointer;min-width:0;}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 9px var(--ok);flex:none;animation:pulse 2.4s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -358,9 +358,9 @@ footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--
 
 <!-- ── HUD (always visible) ── -->
 <div class="hud">
-  <div class="wrap hud-row">
+  <div class="hud-row">
     <div class="callsign" id="callsign"><span class="dot"></span><span class="cname" id="callName">OPERATOR</span><span class="cedit">▸</span></div>
-    <div class="clock" id="clock">--:--:-- UTC</div>
+    <div class="clock" id="clock">--:--:-- EST</div>
   </div>
 </div>
 
@@ -1163,7 +1163,7 @@ $("dataImport").addEventListener("click",()=>{ const code=$("dataBox").value.tri
 /* ── helpers ── */
 function toast(msg,lvlup){ const el=document.createElement("div"); el.className="toast"+(lvlup?" lvlup":""); el.textContent=msg; $("toasts").appendChild(el); setTimeout(()=>el.remove(),lvlup?2600:1500); }
 function haptic(ms){ if(navigator.vibrate) try{ navigator.vibrate(ms); }catch(e){} }
-function tick(){ $("clock").textContent=new Date().toISOString().slice(11,19)+" UTC"; }
+function tick(){ const now=new Date(); const est=now.toLocaleTimeString("en-US",{timeZone:"America/New_York",hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"}); const tz=now.toLocaleDateString("en-US",{timeZone:"America/New_York",timeZoneName:"short"}).split(", ")[1]||"ET"; $("clock").textContent=est+" "+tz; }
 setInterval(tick,1000); tick();
 
 snapNW(); saveSt();
