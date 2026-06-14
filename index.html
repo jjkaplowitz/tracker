@@ -525,9 +525,39 @@ footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--
 <!-- ── BACKUP SHEET ── -->
 <div class="ovl" id="dataOvl"><div class="sheet">
   <h3>Backup / Restore</h3>
-  <p class="hint">Export copies a restore code to your clipboard. Save it somewhere safe. Paste a previous code to restore on any version of this app.</p>
-  <textarea id="dataBox" class="data-box" placeholder="Paste restore code here…" spellcheck="false" autocomplete="off"></textarea>
-  <div class="sha"><button class="cancel" id="dataExport">Export + copy</button><button class="go" id="dataImport">Restore</button></div>
+
+  <!-- EXPORT SECTION -->
+  <div id="dataExportSec">
+    <p class="hint" style="margin-bottom:10px">Tap Export to generate a restore code, then copy it to Notes or email it to yourself.</p>
+    <button class="go" id="dataExport" style="width:100%;padding:13px;border-radius:3px;font-family:var(--fm);font-size:12px;letter-spacing:.1em;cursor:pointer;border:none;">Export + copy code</button>
+    <div id="dataExportedBox" style="display:none;margin-top:12px;">
+      <textarea id="dataBox" class="data-box" style="min-height:72px;" readonly spellcheck="false" autocomplete="off"></textarea>
+      <p style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;color:var(--ok);margin:6px 0 0;text-align:center;" id="dataCopyStatus">TAP TO SELECT &amp; COPY</p>
+    </div>
+  </div>
+
+  <div style="height:1px;background:var(--line);margin:18px 0;"></div>
+
+  <!-- RESTORE SECTION -->
+  <div id="dataRestoreSec">
+    <p class="hint" style="margin-bottom:10px">Paste a restore code below and tap Validate.</p>
+    <textarea id="dataPaste" class="data-box" style="min-height:72px;" placeholder="Paste your restore code here…" spellcheck="false" autocomplete="off"></textarea>
+    <!-- step 1: validate button -->
+    <div id="dataStep1">
+      <button class="go" id="dataValidate" style="width:100%;margin-top:10px;padding:13px;border-radius:3px;font-family:var(--fm);font-size:12px;letter-spacing:.1em;cursor:pointer;border:none;">Validate code</button>
+    </div>
+    <!-- step 2: confirm panel (hidden until validated) -->
+    <div id="dataStep2" style="display:none;margin-top:12px;border:1px solid var(--warn);border-radius:3px;padding:13px;">
+      <div style="font-family:var(--fm);font-size:9px;letter-spacing:.14em;color:var(--warn);text-transform:uppercase;margin-bottom:8px;">⚠ Code verified — ready to restore</div>
+      <div id="dataPreview" style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button id="dataCancelRestore" style="flex:1;padding:12px;border-radius:3px;font-family:var(--fm);font-size:11px;letter-spacing:.1em;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);">Cancel</button>
+        <button id="dataConfirmRestore" style="flex:1;padding:12px;border-radius:3px;font-family:var(--fm);font-size:11px;letter-spacing:.1em;cursor:pointer;border:none;background:var(--warn);color:#000;font-weight:700;">Yes, restore now</button>
+      </div>
+    </div>
+    <div id="dataRestoreErr" style="display:none;margin-top:10px;padding:11px;border:1px solid var(--danger);border-radius:3px;font-family:var(--fm);font-size:11px;color:var(--danger);line-height:1.5;"></div>
+  </div>
+
   <button class="shclose" id="dataClose">Close</button>
 </div></div>
 
@@ -1187,19 +1217,68 @@ function decState(raw){
   } catch(e){}
   throw new Error("could not decode — the code may be incomplete or corrupted");
 }
-$("dataBtn").addEventListener("click",()=>{ $("dataBox").value=""; $("dataOvl").classList.add("show"); });
-$("dataClose").addEventListener("click",()=>$("dataOvl").classList.remove("show")); $("dataOvl").addEventListener("click",e=>{ if(e.target===$("dataOvl")) $("dataOvl").classList.remove("show"); });
-$("dataExport").addEventListener("click",()=>{ const code=encState(); $("dataBox").value=code; const done=()=>toast("COPIED"); const fb=()=>{ $("dataBox").focus(); $("dataBox").select(); try{ document.execCommand("copy"); done(); }catch(ex){ toast("CODE READY — COPY IT"); } }; if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(fb); else fb(); });
-$("dataImport").addEventListener("click",()=>{
-  const raw=$("dataBox").value;
-  if(!raw.trim()){ toast("PASTE A CODE FIRST"); return; }
+let _pendingRestore=null;
+function openDataSheet(){
+  $("dataPaste").value="";
+  $("dataStep1").style.display="";
+  $("dataStep2").style.display="none";
+  $("dataRestoreErr").style.display="none";
+  $("dataExportedBox").style.display="none";
+  _pendingRestore=null;
+  $("dataOvl").classList.add("show");
+}
+$("dataBtn").addEventListener("click",openDataSheet);
+$("dataClose").addEventListener("click",()=>$("dataOvl").classList.remove("show"));
+$("dataOvl").addEventListener("click",e=>{ if(e.target===$("dataOvl")) $("dataOvl").classList.remove("show"); });
+$("dataExport").addEventListener("click",()=>{
+  const code=encState();
+  $("dataBox").value=code;
+  $("dataExportedBox").style.display="";
+  $("dataCopyStatus").textContent="COPYING…";
+  const done=()=>{ $("dataCopyStatus").textContent="✓ COPIED TO CLIPBOARD — SAVE THIS CODE"; };
+  const fb=()=>{ try{ $("dataBox").focus(); $("dataBox").select(); document.execCommand("copy"); done(); }catch(ex){ $("dataCopyStatus").textContent="TAP CODE ABOVE TO SELECT & COPY MANUALLY"; } };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(fb); else fb();
+});
+$("dataBox").addEventListener("click",()=>{ $("dataBox").focus(); $("dataBox").select(); });
+$("dataValidate").addEventListener("click",()=>{
+  const raw=$("dataPaste").value;
+  $("dataRestoreErr").style.display="none";
+  $("dataStep2").style.display="none";
+  _pendingRestore=null;
+  if(!raw.trim()){
+    $("dataRestoreErr").style.display="";
+    $("dataRestoreErr").textContent="No code pasted. Paste your restore code in the box above.";
+    return;
+  }
   let obj;
   try{ obj=decState(raw); }
-  catch(ex){ toast("RESTORE FAILED: "+ex.message,false,true); return; }
-  if(!confirm("Restore this backup? It replaces all current data.")) return;
+  catch(ex){
+    $("dataRestoreErr").style.display="";
+    $("dataRestoreErr").textContent="Could not read code: "+ex.message+". Make sure you copied the entire code.";
+    return;
+  }
+  _pendingRestore=obj;
+  const f=obj.finance||{};
+  const accts=Array.isArray(f.accounts)?f.accounts:[];
+  const nw=accts.reduce((s,a)=>s+(a.kind==="liability"?-(a.balance||0):(a.balance||0)),0);
+  const goals=Array.isArray(obj.cats)?obj.cats.reduce((s,c)=>s+(Array.isArray(c.goals)?c.goals.length:0),0):0;
+  const wkSess=Array.isArray(obj.wkTemplates)?obj.wkTemplates.reduce((s,t)=>s+(Array.isArray(t.sessions)?t.sessions.length:0),0):0;
+  const jLen=Array.isArray(obj.journal)?obj.journal.length:0;
+  $("dataPreview").innerHTML="<b>XP:</b> "+(obj.xp||0).toLocaleString()+" &nbsp;·&nbsp; <b>Level:</b> "+lvlInfo(obj.xp||0).level+"<br><b>Goals:</b> "+goals+" &nbsp;·&nbsp; <b>Net worth:</b> $"+Math.abs(Math.round(nw)).toLocaleString()+"<br><b>Workout sessions:</b> "+wkSess+" &nbsp;·&nbsp; <b>Journal entries:</b> "+jLen;
+  $("dataStep2").style.display="";
+  $("dataStep1").style.display="none";
+});
+$("dataCancelRestore").addEventListener("click",()=>{
+  _pendingRestore=null;
+  $("dataStep2").style.display="none";
+  $("dataStep1").style.display="";
+});
+$("dataConfirmRestore").addEventListener("click",()=>{
+  if(!_pendingRestore){ return; }
+  const obj=_pendingRestore; _pendingRestore=null;
   state=obj; migrate(state); saveSt();
   $("dataOvl").classList.remove("show");
-  render(); toast("DATA RESTORED");
+  render(); toast("✓ DATA RESTORED");
 });
 
 /* ── helpers ── */
