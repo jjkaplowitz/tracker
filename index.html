@@ -23,7 +23,7 @@ html,body{margin:0;padding:0;overflow-x:hidden;width:100%;}
 body{background:var(--bg);color:var(--text);font-family:var(--fs);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;min-height:100vh;
   background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
   background-size:38px 38px;background-attachment:fixed;
-  padding-bottom:max(80px,calc(env(safe-area-inset-bottom)+70px));}
+  padding-bottom:max(120px,calc(env(safe-area-inset-bottom)+110px));}
 svg{max-width:100%;display:block;}
 
 /* ── BOTTOM NAV ── */
@@ -287,7 +287,7 @@ svg{max-width:100%;display:block;}
 .log-row .lx{color:var(--accent);flex:none;font-family:var(--fm);font-size:10px;}
 .log-empty{padding:16px 12px;color:var(--m2);text-align:center;font-size:12px;}
 
-footer{text-align:center;margin:28px 0 10px;}
+footer{text-align:center;margin:28px 0 10px;padding-bottom:max(16px,env(safe-area-inset-bottom));}
 footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--m2);}
 .foot-btns{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap;}
 .foot-btn{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--muted);background:none;border:1px solid var(--line);border-radius:2px;padding:9px 14px;cursor:pointer;}
@@ -571,6 +571,7 @@ function seed(){
       {id:"tasks",name:"Tasks",glyph:"≡",goals:[g("Clear top-3 priorities","daily",1,20),g("Inbox to zero","daily",1,15),g("Weekly review & plan","once",1,50)]},
       {id:"la",name:"Move to LA",glyph:"◎",goals:[g("Lock El Segundo live/work","once",1,400),g("VA loan pre-approval","once",1,200),g("Book movers","once",1,100),g("LA logistics","once",5,150)]},
       {id:"learn2",name:"Learning",glyph:"◈",goals:[g("Read 20 pages","daily",1,25),g("Study / deep work","daily",1,30),g("Finish a book","once",12,200)]},
+      {id:"social",name:"Social",glyph:"◉",goals:[g("Reach out to someone new","daily",1,20),g("Attend a networking event","once",4,120),g("Strengthen a key relationship","once",8,100),g("Post on X / Instagram","daily",1,15)]},
     ],
     wkTemplates:[], // max 3
     journal:[],
@@ -609,6 +610,7 @@ function migrate(s){
   if(!Array.isArray(s.cats)) s.cats=seed().cats;
   // ensure learning cat exists
   if(!s.cats.find(c=>c.id==="learn2")) s.cats.push({id:"learn2",name:"Learning",glyph:"◈",goals:[g("Read 20 pages","daily",1,25),g("Study / deep work","daily",1,30),g("Finish a book","once",12,200)]});
+  if(!s.cats.find(c=>c.id==="social")) s.cats.push({id:"social",name:"Social",glyph:"◉",goals:[g("Reach out to someone new","daily",1,20),g("Attend a networking event","once",4,120),g("Strengthen a key relationship","once",8,100),g("Post on X / Instagram","daily",1,15)]});
   if(!Array.isArray(s.log)) s.log=[];
   if(!s.badges) s.badges={};
   if(typeof s.xp!=="number") s.xp=0;
@@ -1146,14 +1148,37 @@ $("learnSave").addEventListener("click",()=>{ const title=$("learnTitle").value.
 $("learnDel").addEventListener("click",()=>{ if(!_learnEdit||!confirm('Delete "'+_learnEdit.title+'"?')) return; state.learnTopics=state.learnTopics.filter(x=>x.id!==_learnEdit.id); saveSt(); closeLearnSheet(); renderLearning(); });
 
 /* ── BACKUP ── */
-function encState(){ return "MC3:"+btoa(unescape(encodeURIComponent(JSON.stringify(state)))); }
+function encState(){
+  const json=JSON.stringify(state);
+  const bytes=new TextEncoder().encode(json);
+  let bin=""; bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return "MC3:"+btoa(bin);
+}
 function decState(code){
   code=code.trim();
+  // strip whitespace/newlines that mobile keyboards sometimes inject
+  code=code.replace(/\s/g,"");
   const pfx=["MC3:","MC2:","MC1:"].find(p=>code.startsWith(p));
   if(pfx) code=code.slice(pfx.length);
-  const obj=JSON.parse(decodeURIComponent(escape(atob(code))));
-  if(!obj||!Array.isArray(obj.cats)) throw new Error("bad");
-  return obj;
+  try{
+    // modern path: base64 → bytes → UTF-8 string
+    const bin=atob(code);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    const json=new TextDecoder().decode(bytes);
+    const obj=JSON.parse(json);
+    if(!obj||!Array.isArray(obj.cats)) throw new Error("bad");
+    return obj;
+  } catch(e1){
+    // fallback: maybe it was pasted as raw JSON
+    try{
+      const obj=JSON.parse(atob(code));
+      if(!obj||!Array.isArray(obj.cats)) throw new Error("bad");
+      return obj;
+    } catch(e2){
+      throw new Error("invalid");
+    }
+  }
 }
 $("dataBtn").addEventListener("click",()=>{ $("dataBox").value=""; $("dataOvl").classList.add("show"); });
 $("dataClose").addEventListener("click",()=>$("dataOvl").classList.remove("show")); $("dataOvl").addEventListener("click",e=>{ if(e.target===$("dataOvl")) $("dataOvl").classList.remove("show"); });
