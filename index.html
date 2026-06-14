@@ -391,10 +391,6 @@ footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--
   <div class="log" id="log"></div>
   <footer>
     <div class="fl">MISSION CONTROL · ALL SYSTEMS NOMINAL</div>
-    <div class="foot-btns">
-      <button class="foot-btn" id="dataBtn">BACKUP / RESTORE</button>
-      <button class="foot-btn danger" id="resetBtn">PURGE ALL DATA</button>
-    </div>
   </footer>
 </div>
 </div>
@@ -423,7 +419,7 @@ footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--
 <!-- ══ TAB: JOURNAL ══ -->
 <div class="tab" id="tab-journal">
 <div class="wrap" style="padding-top:16px;">
-  <div class="sec-head"><h2>Journal</h2><span class="ln"></span><button class="sbtn" id="newJournal">+ New entry</button></div>
+  <div class="sec-head"><h2>Journal</h2><span class="ln"></span><button class="sbtn" id="exportJournal">↓ Export</button><button class="sbtn" id="newJournal">+ New entry</button></div>
   <div class="jsearch"><input id="jSearch" type="search" placeholder="Search entries…" autocomplete="off"></div>
   <div id="journalList"></div>
 </div>
@@ -522,44 +518,7 @@ footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--
   <button class="shdel" id="learnDel" style="display:none">Delete topic</button>
 </div></div>
 
-<!-- ── BACKUP SHEET ── -->
-<div class="ovl" id="dataOvl"><div class="sheet">
-  <h3>Backup / Restore</h3>
 
-  <!-- EXPORT SECTION -->
-  <div id="dataExportSec">
-    <p class="hint" style="margin-bottom:10px">Tap Export to generate a restore code, then copy it to Notes or email it to yourself.</p>
-    <button class="go" id="dataExport" style="width:100%;padding:13px;border-radius:3px;font-family:var(--fm);font-size:12px;letter-spacing:.1em;cursor:pointer;border:none;">Export + copy code</button>
-    <div id="dataExportedBox" style="display:none;margin-top:12px;">
-      <textarea id="dataBox" class="data-box" style="min-height:72px;" readonly spellcheck="false" autocomplete="off"></textarea>
-      <p style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;color:var(--ok);margin:6px 0 0;text-align:center;" id="dataCopyStatus">TAP TO SELECT &amp; COPY</p>
-    </div>
-  </div>
-
-  <div style="height:1px;background:var(--line);margin:18px 0;"></div>
-
-  <!-- RESTORE SECTION -->
-  <div id="dataRestoreSec">
-    <p class="hint" style="margin-bottom:10px">Paste a restore code below and tap Validate.</p>
-    <textarea id="dataPaste" class="data-box" style="min-height:72px;" placeholder="Paste your restore code here…" spellcheck="false" autocomplete="off"></textarea>
-    <!-- step 1: validate button -->
-    <div id="dataStep1">
-      <button class="go" id="dataValidate" style="width:100%;margin-top:10px;padding:13px;border-radius:3px;font-family:var(--fm);font-size:12px;letter-spacing:.1em;cursor:pointer;border:none;">Validate code</button>
-    </div>
-    <!-- step 2: confirm panel (hidden until validated) -->
-    <div id="dataStep2" style="display:none;margin-top:12px;border:1px solid var(--warn);border-radius:3px;padding:13px;">
-      <div style="font-family:var(--fm);font-size:9px;letter-spacing:.14em;color:var(--warn);text-transform:uppercase;margin-bottom:8px;">⚠ Code verified — ready to restore</div>
-      <div id="dataPreview" style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;"></div>
-      <div style="display:flex;gap:10px;">
-        <button id="dataCancelRestore" style="flex:1;padding:12px;border-radius:3px;font-family:var(--fm);font-size:11px;letter-spacing:.1em;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);">Cancel</button>
-        <button id="dataConfirmRestore" style="flex:1;padding:12px;border-radius:3px;font-family:var(--fm);font-size:11px;letter-spacing:.1em;cursor:pointer;border:none;background:var(--warn);color:#000;font-weight:700;">Yes, restore now</button>
-      </div>
-    </div>
-    <div id="dataRestoreErr" style="display:none;margin-top:10px;padding:11px;border:1px solid var(--danger);border-radius:3px;font-family:var(--fm);font-size:11px;color:var(--danger);line-height:1.5;"></div>
-  </div>
-
-  <button class="shclose" id="dataClose">Close</button>
-</div></div>
 
 <script>
 "use strict";
@@ -1060,7 +1019,7 @@ document.querySelectorAll(".bnav-item").forEach(btn=>{
 
 /* ── callsign + reset ── */
 $("callsign").addEventListener("click",()=>{ const v=prompt("Call sign:",state.callsign); if(v&&v.trim()){ state.callsign=v.trim().toUpperCase().slice(0,16); saveSt(); render(); } });
-$("resetBtn").addEventListener("click",()=>{ if(confirm("Purge all mission data? Export a backup first.")){ state=seed(); saveSt(); render(); } });
+
 
 /* ── OBJECTIVE SHEET ── */
 let _sCat=null,_sCad="once",_sGoal=null,_sMode="add";
@@ -1178,107 +1137,22 @@ $("learnCancel").addEventListener("click",closeLearnSheet); $("learnOvl").addEve
 $("learnSave").addEventListener("click",()=>{ const title=$("learnTitle").value.trim(); if(!title){ $("learnTitle").focus(); return; } const icon=$("learnIcon").value.trim()||"📚"; if(_learnEdit){ _learnEdit.title=title; _learnEdit.icon=icon; } else state.learnTopics.push(mkLearnTopic(title,icon)); saveSt(); closeLearnSheet(); renderLearning(); });
 $("learnDel").addEventListener("click",()=>{ if(!_learnEdit||!confirm('Delete "'+_learnEdit.title+'"?')) return; state.learnTopics=state.learnTopics.filter(x=>x.id!==_learnEdit.id); saveSt(); closeLearnSheet(); renderLearning(); });
 
-/* ── BACKUP ── */
-function encState(){
-  const json=JSON.stringify(state);
-  // encode as UTF-8 bytes → binary string → base64
-  const bytes=new TextEncoder().encode(json);
-  let bin="";
-  for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
-  return "MC3:"+btoa(bin);
-}
-function decState(raw){
-  // strip ALL whitespace and zero-width chars mobile keyboards inject
-  let code=raw.replace(/[\s\u200B\u200C\u200D\uFEFF]/g,"");
-  // strip known prefix
-  const pfx=["MC3:","MC2:","MC1:"].find(p=>code.startsWith(p));
-  if(pfx) code=code.slice(pfx.length);
-  if(!code) throw new Error("empty code");
-  let b64;
-  try{ b64=atob(code); } catch(e){ throw new Error("base64 decode failed — make sure you copied the full code"); }
-  // Path 1: UTF-8 bytes via TextDecoder (handles all unicode, emoji, etc.)
-  try{
-    const arr=new Uint8Array(b64.length);
-    for(let i=0;i<b64.length;i++) arr[i]=b64.charCodeAt(i);
-    const json=new TextDecoder("utf-8").decode(arr);
-    const obj=JSON.parse(json);
-    if(obj&&Array.isArray(obj.cats)) return obj;
-  } catch(e){}
-  // Path 2: legacy — old MC1/MC2 codes used decodeURIComponent(escape(...))
-  try{
-    const json=decodeURIComponent(escape(b64));
-    const obj=JSON.parse(json);
-    if(obj&&Array.isArray(obj.cats)) return obj;
-  } catch(e){}
-  // Path 3: raw latin1 JSON (very old exports)
-  try{
-    const obj=JSON.parse(b64);
-    if(obj&&Array.isArray(obj.cats)) return obj;
-  } catch(e){}
-  throw new Error("could not decode — the code may be incomplete or corrupted");
-}
-let _pendingRestore=null;
-function openDataSheet(){
-  $("dataPaste").value="";
-  $("dataStep1").style.display="";
-  $("dataStep2").style.display="none";
-  $("dataRestoreErr").style.display="none";
-  $("dataExportedBox").style.display="none";
-  _pendingRestore=null;
-  $("dataOvl").classList.add("show");
-}
-$("dataBtn").addEventListener("click",openDataSheet);
-$("dataClose").addEventListener("click",()=>$("dataOvl").classList.remove("show"));
-$("dataOvl").addEventListener("click",e=>{ if(e.target===$("dataOvl")) $("dataOvl").classList.remove("show"); });
-$("dataExport").addEventListener("click",()=>{
-  const code=encState();
-  $("dataBox").value=code;
-  $("dataExportedBox").style.display="";
-  $("dataCopyStatus").textContent="COPYING…";
-  const done=()=>{ $("dataCopyStatus").textContent="✓ COPIED TO CLIPBOARD — SAVE THIS CODE"; };
-  const fb=()=>{ try{ $("dataBox").focus(); $("dataBox").select(); document.execCommand("copy"); done(); }catch(ex){ $("dataCopyStatus").textContent="TAP CODE ABOVE TO SELECT & COPY MANUALLY"; } };
-  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(fb); else fb();
-});
-$("dataBox").addEventListener("click",()=>{ $("dataBox").focus(); $("dataBox").select(); });
-$("dataValidate").addEventListener("click",()=>{
-  const raw=$("dataPaste").value;
-  $("dataRestoreErr").style.display="none";
-  $("dataStep2").style.display="none";
-  _pendingRestore=null;
-  if(!raw.trim()){
-    $("dataRestoreErr").style.display="";
-    $("dataRestoreErr").textContent="No code pasted. Paste your restore code in the box above.";
-    return;
-  }
-  let obj;
-  try{ obj=decState(raw); }
-  catch(ex){
-    $("dataRestoreErr").style.display="";
-    $("dataRestoreErr").textContent="Could not read code: "+ex.message+". Make sure you copied the entire code.";
-    return;
-  }
-  _pendingRestore=obj;
-  const f=obj.finance||{};
-  const accts=Array.isArray(f.accounts)?f.accounts:[];
-  const nw=accts.reduce((s,a)=>s+(a.kind==="liability"?-(a.balance||0):(a.balance||0)),0);
-  const goals=Array.isArray(obj.cats)?obj.cats.reduce((s,c)=>s+(Array.isArray(c.goals)?c.goals.length:0),0):0;
-  const wkSess=Array.isArray(obj.wkTemplates)?obj.wkTemplates.reduce((s,t)=>s+(Array.isArray(t.sessions)?t.sessions.length:0),0):0;
-  const jLen=Array.isArray(obj.journal)?obj.journal.length:0;
-  $("dataPreview").innerHTML="<b>XP:</b> "+(obj.xp||0).toLocaleString()+" &nbsp;·&nbsp; <b>Level:</b> "+lvlInfo(obj.xp||0).level+"<br><b>Goals:</b> "+goals+" &nbsp;·&nbsp; <b>Net worth:</b> $"+Math.abs(Math.round(nw)).toLocaleString()+"<br><b>Workout sessions:</b> "+wkSess+" &nbsp;·&nbsp; <b>Journal entries:</b> "+jLen;
-  $("dataStep2").style.display="";
-  $("dataStep1").style.display="none";
-});
-$("dataCancelRestore").addEventListener("click",()=>{
-  _pendingRestore=null;
-  $("dataStep2").style.display="none";
-  $("dataStep1").style.display="";
-});
-$("dataConfirmRestore").addEventListener("click",()=>{
-  if(!_pendingRestore){ return; }
-  const obj=_pendingRestore; _pendingRestore=null;
-  state=obj; migrate(state); saveSt();
-  $("dataOvl").classList.remove("show");
-  render(); toast("✓ DATA RESTORED");
+/* ── JOURNAL EXPORT ── */
+$("exportJournal").addEventListener("click",function(){
+  if(!state.journal||!state.journal.length){ toast("No journal entries to export"); return; }
+  const sorted=state.journal.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const lines=sorted.map(e=>{
+    const bar="─".repeat(40);
+    return bar+"\n"+e.date+"\n"+bar+"\n"+(e.text||"(empty)")+"\n";
+  });
+  const text="MISSION CONTROL — JOURNAL EXPORT\n"+"=".repeat(40)+"\n"+new Date().toLocaleDateString("en-US",{timeZone:"America/New_York"})+" · "+sorted.length+" entries\n"+"=".repeat(40)+"\n\n"+lines.join("\n");
+  const blob=new Blob([text],{type:"text/plain"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download="journal-"+new Date().toISOString().slice(0,10)+".txt";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1000);
+  toast("Journal exported");
 });
 
 /* ── helpers ── */
