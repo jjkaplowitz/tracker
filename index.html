@@ -23,7 +23,7 @@ html,body{margin:0;padding:0;overflow-x:hidden;width:100%;}
 body{background:var(--bg);color:var(--text);font-family:var(--fs);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;min-height:100vh;
   background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
   background-size:38px 38px;background-attachment:fixed;
-  padding-bottom:max(120px,calc(env(safe-area-inset-bottom)+110px));}
+  padding-bottom:max(72px,calc(env(safe-area-inset-bottom)+62px));}
 svg{max-width:100%;display:block;}
 
 /* ── BOTTOM NAV ── */
@@ -303,7 +303,7 @@ footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--
 /* ── OVERLAYS ── */
 .ovl{position:fixed;inset:0;background:rgba(0,0,0,.78);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:200;display:none;align-items:flex-end;justify-content:center;}
 .ovl.show{display:flex;}
-.sheet{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--lines);border-bottom:none;border-radius:14px 14px 0 0;padding:20px 18px max(90px,calc(env(safe-area-inset-bottom)+80px));animation:sup .28s cubic-bezier(.2,.8,.2,1);max-height:92vh;overflow-y:auto;}
+.sheet{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--lines);border-bottom:none;border-radius:14px 14px 0 0;padding:20px 18px max(22px,env(safe-area-inset-bottom));animation:sup .28s cubic-bezier(.2,.8,.2,1);max-height:88vh;overflow-y:auto;}
 @keyframes sup{from{transform:translateY(100%)}to{transform:none}}
 .sheet h3{margin:0 0 15px;font-family:var(--fm);font-size:11px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;font-weight:500;}
 .hint{font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 14px;}
