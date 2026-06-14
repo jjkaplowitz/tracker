@@ -297,12 +297,13 @@ footer .fl{font-family:var(--fm);font-size:9px;letter-spacing:.12em;color:var(--
 #toasts{position:fixed;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:max(68px,calc(env(safe-area-inset-top)+58px));pointer-events:none;z-index:90;padding-left:12px;padding-right:12px;}
 .toast{font-family:var(--fm);font-size:12px;font-weight:600;color:var(--accent);background:rgba(10,14,20,.94);border:1px solid var(--adim);padding:8px 15px;border-radius:3px;letter-spacing:.05em;animation:flyup 1.6s ease forwards;max-width:100%;text-align:center;}
 .toast.lvlup{color:var(--ok);border-color:var(--ok);font-size:15px;padding:11px 20px;}
+.toast.err{color:var(--danger);border-color:var(--danger);font-size:11px;}
 @keyframes flyup{0%{opacity:0;transform:translateY(8px) scale(.9)}15%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-16px)}}
 
 /* ── OVERLAYS ── */
-.ovl{position:fixed;inset:0;background:rgba(0,0,0,.78);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.78);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:200;display:none;align-items:flex-end;justify-content:center;}
 .ovl.show{display:flex;}
-.sheet{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--lines);border-bottom:none;border-radius:14px 14px 0 0;padding:20px 18px max(26px,env(safe-area-inset-bottom));animation:sup .28s cubic-bezier(.2,.8,.2,1);max-height:92vh;overflow-y:auto;}
+.sheet{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--lines);border-bottom:none;border-radius:14px 14px 0 0;padding:20px 18px max(90px,calc(env(safe-area-inset-bottom)+80px));animation:sup .28s cubic-bezier(.2,.8,.2,1);max-height:92vh;overflow-y:auto;}
 @keyframes sup{from{transform:translateY(100%)}to{transform:none}}
 .sheet h3{margin:0 0 15px;font-family:var(--fm);font-size:11px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;font-weight:500;}
 .hint{font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 14px;}
@@ -1150,43 +1151,59 @@ $("learnDel").addEventListener("click",()=>{ if(!_learnEdit||!confirm('Delete "'
 /* ── BACKUP ── */
 function encState(){
   const json=JSON.stringify(state);
+  // encode as UTF-8 bytes → binary string → base64
   const bytes=new TextEncoder().encode(json);
-  let bin=""; bytes.forEach(b=>bin+=String.fromCharCode(b));
+  let bin="";
+  for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
   return "MC3:"+btoa(bin);
 }
-function decState(code){
-  code=code.trim();
-  // strip whitespace/newlines that mobile keyboards sometimes inject
-  code=code.replace(/\s/g,"");
+function decState(raw){
+  // strip ALL whitespace and zero-width chars mobile keyboards inject
+  let code=raw.replace(/[\s\u200B\u200C\u200D\uFEFF]/g,"");
+  // strip known prefix
   const pfx=["MC3:","MC2:","MC1:"].find(p=>code.startsWith(p));
   if(pfx) code=code.slice(pfx.length);
+  if(!code) throw new Error("empty code");
+  let b64;
+  try{ b64=atob(code); } catch(e){ throw new Error("base64 decode failed — make sure you copied the full code"); }
+  // Path 1: UTF-8 bytes via TextDecoder (handles all unicode, emoji, etc.)
   try{
-    // modern path: base64 → bytes → UTF-8 string
-    const bin=atob(code);
-    const bytes=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-    const json=new TextDecoder().decode(bytes);
+    const arr=new Uint8Array(b64.length);
+    for(let i=0;i<b64.length;i++) arr[i]=b64.charCodeAt(i);
+    const json=new TextDecoder("utf-8").decode(arr);
     const obj=JSON.parse(json);
-    if(!obj||!Array.isArray(obj.cats)) throw new Error("bad");
-    return obj;
-  } catch(e1){
-    // fallback: maybe it was pasted as raw JSON
-    try{
-      const obj=JSON.parse(atob(code));
-      if(!obj||!Array.isArray(obj.cats)) throw new Error("bad");
-      return obj;
-    } catch(e2){
-      throw new Error("invalid");
-    }
-  }
+    if(obj&&Array.isArray(obj.cats)) return obj;
+  } catch(e){}
+  // Path 2: legacy — old MC1/MC2 codes used decodeURIComponent(escape(...))
+  try{
+    const json=decodeURIComponent(escape(b64));
+    const obj=JSON.parse(json);
+    if(obj&&Array.isArray(obj.cats)) return obj;
+  } catch(e){}
+  // Path 3: raw latin1 JSON (very old exports)
+  try{
+    const obj=JSON.parse(b64);
+    if(obj&&Array.isArray(obj.cats)) return obj;
+  } catch(e){}
+  throw new Error("could not decode — the code may be incomplete or corrupted");
 }
 $("dataBtn").addEventListener("click",()=>{ $("dataBox").value=""; $("dataOvl").classList.add("show"); });
 $("dataClose").addEventListener("click",()=>$("dataOvl").classList.remove("show")); $("dataOvl").addEventListener("click",e=>{ if(e.target===$("dataOvl")) $("dataOvl").classList.remove("show"); });
 $("dataExport").addEventListener("click",()=>{ const code=encState(); $("dataBox").value=code; const done=()=>toast("COPIED"); const fb=()=>{ $("dataBox").focus(); $("dataBox").select(); try{ document.execCommand("copy"); done(); }catch(ex){ toast("CODE READY — COPY IT"); } }; if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(fb); else fb(); });
-$("dataImport").addEventListener("click",()=>{ const code=$("dataBox").value.trim(); if(!code){ toast("PASTE A CODE FIRST"); return; } let obj; try{ obj=decState(code); }catch(ex){ toast("INVALID CODE"); return; } if(!confirm("Restore this backup? It replaces all current data.")) return; state=obj; migrate(state); saveSt(); $("dataOvl").classList.remove("show"); render(); toast("DATA RESTORED"); });
+$("dataImport").addEventListener("click",()=>{
+  const raw=$("dataBox").value;
+  if(!raw.trim()){ toast("PASTE A CODE FIRST"); return; }
+  let obj;
+  try{ obj=decState(raw); }
+  catch(ex){ toast("RESTORE FAILED: "+ex.message,false,true); return; }
+  if(!confirm("Restore this backup? It replaces all current data.")) return;
+  state=obj; migrate(state); saveSt();
+  $("dataOvl").classList.remove("show");
+  render(); toast("DATA RESTORED");
+});
 
 /* ── helpers ── */
-function toast(msg,lvlup){ const el=document.createElement("div"); el.className="toast"+(lvlup?" lvlup":""); el.textContent=msg; $("toasts").appendChild(el); setTimeout(()=>el.remove(),lvlup?2600:1500); }
+function toast(msg,lvlup,err){ const el=document.createElement("div"); el.className="toast"+(lvlup?" lvlup":"")+(err?" err":""); el.textContent=msg; $("toasts").appendChild(el); setTimeout(()=>el.remove(),err?4000:lvlup?2600:1500); }
 function haptic(ms){ if(navigator.vibrate) try{ navigator.vibrate(ms); }catch(e){} }
 function tick(){ const now=new Date(); const est=now.toLocaleTimeString("en-US",{timeZone:"America/New_York",hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"}); const tz=now.toLocaleDateString("en-US",{timeZone:"America/New_York",timeZoneName:"short"}).split(", ")[1]||"ET"; $("clock").textContent=est+" "+tz; }
 setInterval(tick,1000); tick();
